@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ledger — Personal Finance Tracker</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+        :root{
+          --paper:#F7F4EE;
+          --ink:#1B2620;
+          --ink-soft:#5B6A60;
+          --line:#D9D2C3;
+          --moss:#3C5A47;
+          --moss-deep:#243A2C;
+          --clay:#B5563A;
+          --gold:#C8A24A;
+          --card:#FFFFFF;
+          --danger:#A3432F;
+        }
+        *{box-sizing:border-box; margin:0; padding:0;}
+        body{
+          background:var(--paper);
+          color:var(--ink);
+          font-family:'Inter', sans-serif;
+          min-height:100vh;
+          -webkit-font-smoothing:antialiased;
+        }
+        .mono{font-family:'IBM Plex Mono', monospace;}
+        .serif{font-family:'Fraunces', serif;}
+
+        /* ---------- Top bar ---------- */
+        .topbar{
+          display:flex; align-items:center; justify-content:space-between;
+          padding:22px 40px;
+          border-bottom:1px solid var(--line);
+        }
+        .brand{
+          display:flex; align-items:center; gap:10px;
+        }
+        .brand-mark{
+          width:30px;height:30px;border-radius:50%;
+          background:var(--moss);
+          display:flex;align-items:center;justify-content:center;
+          color:var(--paper); font-family:'Fraunces',serif; font-weight:700; font-size:16px;
+        }
+        .brand-name{
+          font-family:'Fraunces', serif; font-weight:600; font-size:20px; letter-spacing:0.2px;
+        }
+        .user-pill{
+          display:flex; align-items:center; gap:12px;
+          font-size:13px; color:var(--ink-soft);
+        }
+        .user-pill span.name{ color:var(--ink); font-weight:600;}
+        .logout-btn{
+          background:none; border:1px solid var(--line); color:var(--ink-soft);
+          font-family:'Inter',sans-serif; font-size:12px; padding:7px 14px;
+          border-radius:20px; cursor:pointer; transition:.15s;
+        }
+        .logout-btn:hover{ border-color:var(--ink); color:var(--ink);}
+
+        /* ---------- Layout shell ---------- */
+        .shell{ display:none; max-width:1180px; margin:0 auto; padding:40px; }
+        .shell.active{ display:block; }
+
+        /* ===================================================== */
+        /* AUTH SCREEN                                            */
+        /* ===================================================== */
+        #auth-screen{
+          min-height:100vh;
+          display:flex; align-items:center; justify-content:center;
+          position:relative;
+          overflow:hidden;
+        }
+        #auth-screen::before{
+          content:"";
+          position:absolute; inset:0;
+          background-image:
+            linear-gradient(var(--line) 1px, transparent 1px),
+            linear-gradient(90deg, var(--line) 1px, transparent 1px);
+          background-size:64px 64px;
+          opacity:0.35;
+          mask-image: radial-gradient(circle at 50% 40%, black, transparent 70%);
+        }
+        .auth-wrap{
+          position:relative; z-index:2;
+          display:flex; width:min(920px, 92vw);
+          background:var(--card);
+          border:1px solid var(--line);
+          border-radius:18px;
+          overflow:hidden;
+          box-shadow:0 30px 60px -25px rgba(27,38,32,0.25);
+        }
+        .auth-side{
+          flex:1.05;
+          background:var(--moss-deep);
+          color:var(--paper);
+          padding:48px 40px;
+          display:flex; flex-direction:column; justify-content:space-between;
+          position:relative;
+        }
+        .auth-side .ledger-rows{
+          position:absolute; inset:0; opacity:0.08;
+          background-image: repeating-linear-gradient(transparent, transparent 27px, var(--paper) 28px);
+        }
+        .auth-side h1{
+          font-family:'Fraunces', serif; font-weight:600;
+          font-size:34px; line-height:1.18; letter-spacing:-0.5px;
+          position:relative; z-index:1;
+        }
+        .auth-side .eyebrow{
+          text-transform:uppercase; letter-spacing:2px; font-size:11px;
+          color:var(--gold); font-family:'IBM Plex Mono',monospace; margin-bottom:14px;
+          position:relative; z-index:1;
+        }
+        .auth-side .ledger-sample{
+          position:relative; z-index:1;
+          font-family:'IBM Plex Mono', monospace; font-size:12.5px;
+          color:rgba(247,244,238,0.78);
+          border-top:1px solid rgba(247,244,238,0.18);
+          padding-top:18px;
+        }
+        .ledger-sample div{ display:flex; justify-content:space-between; padding:5px 0; }
+        .ledger-sample .pos{ color:#9FD3A8; }
+        .ledger-sample .neg{ color:#E3A48C; }
+
+        .auth-form-side{
+          flex:1; padding:48px 44px; display:flex; flex-direction:column; justify-content:center;
+        }
+        .tabs{ display:flex; gap:4px; margin-bottom:30px; background:var(--paper); padding:4px; border-radius:30px; border:1px solid var(--line); }
+        .tab-btn{
+          flex:1; padding:9px 0; border:none; background:none; cursor:pointer;
+          font-family:'Inter',sans-serif; font-weight:600; font-size:13px; color:var(--ink-soft);
+          border-radius:24px; transition:.15s;
+        }
+        .tab-btn.active{ background:var(--moss); color:var(--paper); }
+
+        .field{ margin-bottom:16px; }
+        .field label{
+          display:block; font-size:11px; text-transform:uppercase; letter-spacing:1.2px;
+          color:var(--ink-soft); margin-bottom:6px; font-family:'IBM Plex Mono',monospace;
+        }
+        .field input, .field select{
+          width:100%; padding:11px 13px; border:1px solid var(--line); border-radius:8px;
+          font-family:'Inter',sans-serif; font-size:14px; background:var(--paper); color:var(--ink);
+          transition:.15s;
+        }
+        .field input:focus, .field select:focus{
+          outline:none; border-color:var(--moss); background:#fff;
+        }
+        .primary-btn{
+          width:100%; padding:13px 0; border:none; border-radius:8px;
+          background:var(--moss); color:var(--paper); font-family:'Inter',sans-serif;
+          font-weight:600; font-size:14px; cursor:pointer; margin-top:6px;
+          transition:.15s;
+        }
+        .primary-btn:hover{ background:var(--moss-deep); }
+        .form-msg{
+          font-size:12.5px; margin-top:12px; padding:10px 12px; border-radius:8px;
+          display:none; font-family:'IBM Plex Mono',monospace;
+        }
+        .form-msg.error{ display:block; background:#F7E6E1; color:var(--danger); }
+        .form-msg.success{ display:block; background:#E6EEE8; color:var(--moss-deep); }
+
+        /* ===================================================== */
+        /* DASHBOARD                                              */
+        /* ===================================================== */
+        .page-head{
+          display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:30px;
+        }
+        .page-head .eyebrow{
+          font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:2px;
+          text-transform:uppercase; color:var(--clay); margin-bottom:6px;
+        }
+        .page-head h2{ font-family:'Fraunces',serif; font-size:30px; font-weight:600; }
+
+        .month-control{ display:flex; align-items:center; gap:10px; }
+        .month-control select{
+          padding:8px 12px; border:1px solid var(--line); border-radius:8px;
+          font-family:'IBM Plex Mono',monospace; font-size:13px; background:var(--card); cursor:pointer;
+        }
+
+        /* Stat cards */
+        .stat-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:30px; }
+        .stat-card{
+          background:var(--card); border:1px solid var(--line); border-radius:14px;
+          padding:22px 24px; position:relative; overflow:hidden;
+        }
+        .stat-card .label{
+          font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase;
+          letter-spacing:1.2px; color:var(--ink-soft); margin-bottom:10px;
+        }
+        .stat-card .value{ font-family:'Fraunces',serif; font-size:32px; font-weight:600; }
+        .stat-card.income .value{ color:var(--moss); }
+        .stat-card.expense .value{ color:var(--clay); }
+        .stat-card.balance{ background:var(--moss-deep); color:var(--paper); border-color:var(--moss-deep); }
+        .stat-card.balance .label{ color:rgba(247,244,238,0.65); }
+        .stat-card.balance .value{ color:var(--paper); }
+        .stat-card .ticker{
+          position:absolute; right:18px; top:18px; font-family:'IBM Plex Mono',monospace; font-size:10px;
+          color:var(--ink-soft); opacity:0.5;
+        }
+
+        /* Two column: form + breakdown */
+        .grid-2{ display:grid; grid-template-columns:1.1fr 0.9fr; gap:22px; margin-bottom:30px; }
+
+        .panel{
+          background:var(--card); border:1px solid var(--line); border-radius:14px; padding:26px;
+        }
+        .panel h3{
+          font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin-bottom:18px;
+          display:flex; align-items:center; gap:8px;
+        }
+        .panel h3 .dot{ width:8px; height:8px; border-radius:50%; }
+        .dot.in{ background:var(--moss); }
+        .dot.out{ background:var(--clay); }
+
+        .entry-tabs{ display:flex; gap:8px; margin-bottom:18px; }
+        .entry-tab{
+          padding:7px 16px; border-radius:20px; border:1px solid var(--line); background:none;
+          cursor:pointer; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; color:var(--ink-soft);
+        }
+        .entry-tab.active.in{ background:var(--moss); border-color:var(--moss); color:#fff; }
+        .entry-tab.active.out{ background:var(--clay); border-color:var(--clay); color:#fff; }
+
+        .form-row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+        /* Category breakdown bars */
+        .cat-row{ margin-bottom:14px; }
+        .cat-row-top{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px; }
+        .cat-row-top .cname{ font-weight:600; }
+        .cat-row-top .camt{ font-family:'IBM Plex Mono',monospace; color:var(--ink-soft); }
+        .bar-track{ height:8px; background:var(--paper); border-radius:6px; overflow:hidden; border:1px solid var(--line);}
+        .bar-fill{ height:100%; background:var(--clay); border-radius:6px; transition:width .4s ease; }
+        .empty-note{ font-size:13px; color:var(--ink-soft); font-style:italic; }
+
+        /* Transactions table */
+        .panel.full{ margin-bottom:40px; }
+        table{ width:100%; border-collapse:collapse; }
+        thead th{
+          text-align:left; font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase;
+          letter-spacing:1px; color:var(--ink-soft); padding:0 0 10px 0; border-bottom:1px solid var(--line);
+        }
+        tbody td{ padding:13px 0; border-bottom:1px solid var(--line); font-size:13.5px; }
+        tbody tr:last-child td{ border-bottom:none; }
+        .type-chip{
+          font-family:'IBM Plex Mono',monospace; font-size:10px; padding:3px 9px; border-radius:12px;
+          text-transform:uppercase; letter-spacing:0.5px;
+        }
+        .type-chip.in{ background:#E6EEE8; color:var(--moss-deep); }
+        .type-chip.out{ background:#F7E6E1; color:var(--danger); }
+        .amt-cell{ font-family:'IBM Plex Mono',monospace; text-align:right; }
+        .amt-cell.in{ color:var(--moss); }
+        .amt-cell.out{ color:var(--clay); }
+        .del-btn{
+          background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:15px;
+          padding:4px 8px; border-radius:6px; transition:.15s;
+        }
+        .del-btn:hover{ background:#F7E6E1; color:var(--danger); }
+
+        .toast{
+          position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+          background:var(--moss-deep); color:var(--paper); padding:12px 22px; border-radius:30px;
+          font-family:'IBM Plex Mono',monospace; font-size:12.5px; opacity:0; transition:.25s;
+          pointer-events:none; z-index:50;
+        }
+        .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+        .toast.error{ background:var(--danger); }
+
+        @media (max-width:880px){
+          .auth-wrap{ flex-direction:column; }
+          .auth-side{ display:none; }
+          .stat-row{ grid-template-columns:1fr; }
+          .grid-2{ grid-template-columns:1fr; }
+          .form-row{ grid-template-columns:1fr; }
+          .shell{ padding:24px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===================== AUTH SCREEN ===================== -->
+<div id="auth-screen">
+    <div class="auth-wrap">
+        <div class="auth-side">
+            <div class="ledger-rows"></div>
+            <div>
+                <div class="eyebrow">Ledger / 001</div>
+                <h1>Every rupee,<br>accounted for.</h1>
+            </div>
+            <div class="ledger-sample">
+                <div><span>June Salary</span><span class="pos">+₹50,000.00</span></div>
+                <div><span>Groceries — Food</span><span class="neg">−₹1,200.00</span></div>
+                <div><span>Metro pass — Travel</span><span class="neg">−₹450.00</span></div>
+            </div>
+        </div>
+        <div class="auth-form-side">
+            <div class="tabs">
+                <button class="tab-btn active" id="tab-login" onclick="switchTab('login')">Log in</button>
+                <button class="tab-btn" id="tab-register" onclick="switchTab('register')">Register</button>
+            </div>
+
+            <!-- Login form -->
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="field">
+                    <label>Username</label>
+                    <input type="text" id="login-username" required autocomplete="username">
+                </div>
+                <div class="field">
+                    <label>Password</label>
+                    <input type="password" id="login-password" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="primary-btn">Log in</button>
+                <div class="form-msg" id="login-msg"></div>
+            </form>
+
+            <!-- Register form -->
+            <form id="register-form" onsubmit="handleRegister(event)" style="display:none;">
+                <div class="field">
+                    <label>Username</label>
+                    <input type="text" id="reg-username" required autocomplete="username">
+                </div>
+                <div class="field">
+                    <label>Email</label>
+                    <input type="email" id="reg-email" required autocomplete="email">
+                </div>
+                <div class="field">
+                    <label>Password</label>
+                    <input type="password" id="reg-password" required minlength="6" autocomplete="new-password">
+                </div>
+                <button type="submit" class="primary-btn">Create account</button>
+                <div class="form-msg" id="register-msg"></div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== APP SHELL ===================== -->
+<div id="app-shell">
+    <div class="topbar">
+        <div class="brand">
+            <div class="brand-mark">₹</div>
+            <div class="brand-name">Ledger</div>
+        </div>
+        <div class="user-pill">
+            Signed in as <span class="name" id="display-username">—</span>
+            <button class="logout-btn" onclick="logout()">Log out</button>
+        </div>
+    </div>
+
+    <div class="shell active" id="dashboard-shell">
+        <div class="page-head">
+            <div>
+                <div class="eyebrow">Monthly summary</div>
+                <h2 id="month-title">This month</h2>
+            </div>
+            <div class="month-control">
+                <select id="month-select" onchange="loadDashboard()"></select>
+                <select id="year-select" onchange="loadDashboard()"></select>
+            </div>
+        </div>
+
+        <div class="stat-row">
+            <div class="stat-card income">
+                <div class="label">Total income</div>
+                <div class="value" id="stat-income">₹0.00</div>
+            </div>
+            <div class="stat-card expense">
+                <div class="label">Total expense</div>
+                <div class="value" id="stat-expense">₹0.00</div>
+            </div>
+            <div class="stat-card balance">
+                <div class="label">Balance</div>
+                <div class="value" id="stat-balance">₹0.00</div>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="panel">
+                <h3><span class="dot in" id="entry-dot"></span> Add entry</h3>
+                <div class="entry-tabs">
+                    <button class="entry-tab active in" id="entry-tab-income" onclick="switchEntryType('income')">Income</button>
+                    <button class="entry-tab out" id="entry-tab-expense" onclick="switchEntryType('expense')">Expense</button>
+                </div>
+                <form id="entry-form" onsubmit="handleAddEntry(event)">
+                    <div class="form-row">
+                        <div class="field">
+                            <label>Amount (₹)</label>
+                            <input type="number" id="entry-amount" step="0.01" min="0" required>
+                        </div>
+                        <div class="field">
+                            <label>Date</label>
+                            <input type="date" id="entry-date" required>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Category</label>
+                        <select id="entry-category" required></select>
+                    </div>
+                    <div class="field">
+                        <label>Description</label>
+                        <input type="text" id="entry-description" placeholder="e.g. June salary, groceries...">
+                    </div>
+                    <button type="submit" class="primary-btn" id="entry-submit-btn">Add income</button>
+                </form>
+                <div class="form-msg" id="entry-msg"></div>
+            </div>
+
+            <div class="panel">
+                <h3><span class="dot out"></span> Where it went</h3>
+                <div id="category-breakdown">
+                    <p class="empty-note">No expenses yet this month.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel full">
+            <h3>Recent activity</h3>
+            <table>
+                <thead>
+                <tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th style="text-align:right;">Amount</th><th></th></tr>
+                </thead>
+                <tbody id="transactions-body">
+                <tr><td colspan="6" class="empty-note">No transactions yet — add your first entry above.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    /* =========================================================
+       CONFIG — point this at your running Spring Boot backend
+       ========================================================= */
+    const API_BASE = "http://localhost:8080/api";
+
+    let authToken = null;
+    let currentUsername = null;
+    let allCategories = [];
+    let currentEntryType = "income"; // 'income' | 'expense'
+    let allIncomes = [];
+    let allExpenses = [];
+
+    /* ---------------- Toast helper ---------------- */
+    function showToast(message, isError=false){
+      const t = document.getElementById('toast');
+      t.textContent = message;
+      t.className = 'toast show' + (isError ? ' error' : '');
+      setTimeout(()=> t.classList.remove('show'), 2800);
+    }
+
+    /* ---------------- Auth tab switching ---------------- */
+    function switchTab(which){
+      document.getElementById('tab-login').classList.toggle('active', which==='login');
+      document.getElementById('tab-register').classList.toggle('active', which==='register');
+      document.getElementById('login-form').style.display = which==='login' ? 'block' : 'none';
+      document.getElementById('register-form').style.display = which==='register' ? 'block' : 'none';
+    }
+
+    /* ---------------- Register ---------------- */
+    async function handleRegister(e){
+      e.preventDefault();
+      const msg = document.getElementById('register-msg');
+      msg.className = 'form-msg';
+      const body = {
+        username: document.getElementById('reg-username').value.trim(),
+        email: document.getElementById('reg-email').value.trim(),
+        password: document.getElementById('reg-password').value
+      };
+      try{
+        const res = await fetch(`${API_BASE}/auth/register`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.message || 'Registration failed');
+        onAuthSuccess(data);
+      }catch(err){
+        msg.textContent = err.message || 'Could not reach the server. Is your Spring Boot app running on :8080?';
+        msg.classList.add('error');
+      }
+    }
+
+    /* ---------------- Login ---------------- */
+    async function handleLogin(e){
+      e.preventDefault();
+      const msg = document.getElementById('login-msg');
+      msg.className = 'form-msg';
+      const body = {
+        username: document.getElementById('login-username').value.trim(),
+        password: document.getElementById('login-password').value
+      };
+      try{
+        const res = await fetch(`${API_BASE}/auth/login`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.message || 'Invalid username or password');
+        onAuthSuccess(data);
+      }catch(err){
+        msg.textContent = err.message || 'Could not reach the server. Is your Spring Boot app running on :8080?';
+        msg.classList.add('error');
+      }
+    }
+
+    function onAuthSuccess(data){
+      authToken = data.token;
+      currentUsername = data.username;
+      document.getElementById('display-username').textContent = currentUsername;
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('app-shell').style.display = 'block';
+      initDashboard();
+    }
+
+    function logout(){
+      authToken = null;
+      currentUsername = null;
+      document.getElementById('app-shell').style.display = 'none';
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('login-form').reset();
+      document.getElementById('register-form').reset();
+    }
+
+    /* ---------------- Authenticated fetch wrapper ---------------- */
+    async function apiFetch(path, options={}){
+      const res = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization': `Bearer ${authToken}`,
+          ...(options.headers || {})
+        }
+      });
+      if(res.status === 204) return null;
+      const data = await res.json().catch(()=>null);
+      if(!res.ok){
+        throw new Error((data && data.message) || `Request failed (${res.status})`);
+      }
+      return data;
+    }
+
+    /* ---------------- Init dashboard after login ---------------- */
+    async function initDashboard(){
+      populateMonthYearSelectors();
+      document.getElementById('entry-date').valueAsDate = new Date();
+      try{
+        allCategories = await apiFetch('/categories');
+        populateCategoryDropdown();
+      }catch(err){
+        showToast(err.message, true);
+      }
+      await Promise.all([loadDashboard(), loadTransactions()]);
+    }
+
+    function populateMonthYearSelectors(){
+      const monthSel = document.getElementById('month-select');
+      const yearSel = document.getElementById('year-select');
+      const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+      const now = new Date();
+      monthSel.innerHTML = months.map((m,i)=>`<option value="${i+1}" ${i===now.getMonth()?'selected':''}>${m}</option>`).join('');
+      let yearOpts = '';
+      for(let y = now.getFullYear()-2; y <= now.getFullYear()+1; y++){
+        yearOpts += `<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`;
+      }
+      yearSel.innerHTML = yearOpts;
+    }
+
+    function populateCategoryDropdown(){
+      const sel = document.getElementById('entry-category');
+      const filtered = allCategories.filter(c => c.type === (currentEntryType === 'income' ? 'INCOME' : 'EXPENSE'));
+      sel.innerHTML = filtered.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    }
+
+    /* ---------------- Entry type toggle (income/expense) ---------------- */
+    function switchEntryType(type){
+      currentEntryType = type;
+      document.getElementById('entry-tab-income').classList.toggle('active', type==='income');
+      document.getElementById('entry-tab-expense').classList.toggle('active', type==='expense');
+      document.getElementById('entry-dot').className = 'dot ' + (type==='income' ? 'in' : 'out');
+      document.getElementById('entry-submit-btn').textContent = type==='income' ? 'Add income' : 'Add expense';
+      populateCategoryDropdown();
+    }
+
+    /* ---------------- Add entry (income or expense) ---------------- */
+    async function handleAddEntry(e){
+      e.preventDefault();
+      const msg = document.getElementById('entry-msg');
+      msg.className = 'form-msg';
+      const payload = {
+        amount: parseFloat(document.getElementById('entry-amount').value),
+        date: document.getElementById('entry-date').value,
+        categoryId: parseInt(document.getElementById('entry-category').value),
+        description: document.getElementById('entry-description').value.trim()
+      };
+      const endpoint = currentEntryType === 'income' ? '/incomes' : '/expenses';
+      try{
+        await apiFetch(endpoint, { method:'POST', body: JSON.stringify(payload) });
+        showToast(`${currentEntryType === 'income' ? 'Income' : 'Expense'} added.`);
+        document.getElementById('entry-form').reset();
+        document.getElementById('entry-date').valueAsDate = new Date();
+        await Promise.all([loadDashboard(), loadTransactions()]);
+      }catch(err){
+        msg.textContent = err.message;
+        msg.classList.add('error');
+      }
+    }
+
+    /* ---------------- Load dashboard summary ---------------- */
+    async function loadDashboard(){
+      const month = document.getElementById('month-select').value;
+      const year = document.getElementById('year-select').value;
+      try{
+        const data = await apiFetch(`/dashboard/summary?year=${year}&month=${month}`);
+        document.getElementById('stat-income').textContent = formatMoney(data.totalIncome);
+        document.getElementById('stat-expense').textContent = formatMoney(data.totalExpense);
+        document.getElementById('stat-balance').textContent = formatMoney(data.balance);
+        renderCategoryBreakdown(data.expenseByCategory || {}, data.totalExpense || 0);
+
+        const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+        document.getElementById('month-title').textContent = `${months[month-1]} ${year}`;
+      }catch(err){
+        showToast(err.message, true);
+      }
+    }
+
+    function renderCategoryBreakdown(breakdown, total){
+      const container = document.getElementById('category-breakdown');
+      const entries = Object.entries(breakdown);
+      if(entries.length === 0){
+        container.innerHTML = '<p class="empty-note">No expenses yet this month.</p>';
+        return;
+      }
+      entries.sort((a,b) => b[1] - a[1]);
+      container.innerHTML = entries.map(([name, amount]) => {
+        const pct = total > 0 ? Math.round((amount/total)*100) : 0;
+        return `
+          <div class="cat-row">
+            <div class="cat-row-top">
+              <span class="cname">${escapeHtml(name)}</span>
+              <span class="camt">${formatMoney(amount)} · ${pct}%</span>
+            </div>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct}%;"></div></div>
+          </div>`;
+      }).join('');
+    }
+
+    /* ---------------- Load transactions list ---------------- */
+    async function loadTransactions(){
+      try{
+        [allIncomes, allExpenses] = await Promise.all([
+          apiFetch('/incomes'),
+          apiFetch('/expenses')
+        ]);
+        renderTransactions();
+      }catch(err){
+        showToast(err.message, true);
+      }
+    }
+
+    function renderTransactions(){
+      const tbody = document.getElementById('transactions-body');
+      const combined = [
+        ...allIncomes.map(i => ({...i, _type:'income'})),
+        ...allExpenses.map(e => ({...e, _type:'expense'}))
+      ].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+      if(combined.length === 0){
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-note">No transactions yet — add your first entry above.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = combined.map(tx => `
+        <tr>
+          <td class="mono">${formatDate(tx.date)}</td>
+          <td>${escapeHtml(tx.description || '—')}</td>
+          <td>${tx.category ? escapeHtml(tx.category.name) : '—'}</td>
+          <td><span class="type-chip ${tx._type==='income'?'in':'out'}">${tx._type}</span></td>
+          <td class="amt-cell ${tx._type==='income'?'in':'out'}">${tx._type==='income'?'+':'−'}${formatMoney(tx.amount)}</td>
+          <td><button class="del-btn" onclick="deleteEntry('${tx._type}', ${tx.id})" title="Delete">✕</button></td>
+        </tr>
+      `).join('');
+    }
+
+    async function deleteEntry(type, id){
+      const endpoint = type === 'income' ? `/incomes/${id}` : `/expenses/${id}`;
+      try{
+        await apiFetch(endpoint, { method:'DELETE' });
+        showToast('Entry deleted.');
+        await Promise.all([loadDashboard(), loadTransactions()]);
+      }catch(err){
+        showToast(err.message, true);
+      }
+    }
+
+    /* ---------------- Utils ---------------- */
+    function formatMoney(n){
+      const num = Number(n) || 0;
+      return '₹' + num.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+    function formatDate(d){
+      const dt = new Date(d);
+      return dt.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+    }
+    function escapeHtml(str){
+      const div = document.createElement('div');
+      div.textContent = str ?? '';
+      return div.innerHTML;
+    }
+</script>
+</body>
+</html>
